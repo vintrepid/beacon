@@ -98,7 +98,8 @@ defmodule Beacon.MixProject do
       {:makeup_syntect, "~> 0.1", only: :dev},
       {:phoenix_live_reload, "~> 1.3", only: :dev},
       {:bypass, "~> 2.1", only: :test},
-      {:phx_new, "~> 1.7", only: :test, runtime: false}
+      {:phx_new, "~> 1.7", only: :test, runtime: false},
+      {:igniter, "~> 0.6", optional: true}
     ]
   end
 

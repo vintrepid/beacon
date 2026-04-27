@@ -57,7 +57,7 @@ defmodule Beacon.MixProject do
   defp deps do
     [
       # Overridable
-      override_dep(:phoenix, "~> 1.7", "PHOENIX_VERSION", "PHOENIX_PATH"),
+      override_dep(:phoenix, "~> 1.7 or ~> 1.8", "PHOENIX_VERSION", "PHOENIX_PATH"),
       override_dep(:phoenix_live_view, ">= 1.0.1", "PHOENIX_LIVE_VIEW_VERSION", "PHOENIX_LIVE_VIEW_PATH"),
       override_dep(:mdex, "~> 0.2", "MDEX_VERSION", "MDEX_PATH"),
 
@@ -87,7 +87,7 @@ defmodule Beacon.MixProject do
       {:postgrex, "~> 0.16"},
       {:safe_code, "~> 0.2"},
       {:solid, "~> 0.14"},
-      {:tailwind_compiler, path: "/Users/bcardarella/projects/tailwind_compiler"},
+      {:tailwind_compiler, github: "BeaconCMS/tailwind_compiler"},
       esbuild_version(),
       # Dev, Test, Docs
       {:bandit, "~> 1.0", only: :dev, optional: true},

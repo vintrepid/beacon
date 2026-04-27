@@ -1310,6 +1310,20 @@ defmodule Beacon.Content do
     |> maybe_add_leading_slash()
   end
 
+  defp extract_page_snapshot(%{schema_version: 7, page: %Page{} = page, ast: ast}) do
+    page = maybe_add_leading_slash(page)
+
+    case unwrap_ast(ast) do
+      nodes when is_list(nodes) -> %{page | ast: nodes}
+      _ -> page
+    end
+  end
+
+  defp extract_page_snapshot(%{schema_version: 7, page: %Page{} = page}) do
+    page
+    |> maybe_add_leading_slash()
+  end
+
   defp extract_page_snapshot(_snapshot), do: nil
 
   defp maybe_add_leading_slash(%{path: <<"/", _rest::binary>>} = page), do: page

@@ -72,14 +72,16 @@ if Code.ensure_loaded?(Igniter) do
       {igniter, router} = select_router!(igniter)
       endpoint = Module.concat([web_module, Endpoint])
       repo = Module.concat([Macro.camelize(to_string(app)), Repo])
+      layouts_module = Module.concat([web_module, Layouts])
 
       igniter
       |> Igniter.Project.Formatter.import_dep(:beacon)
       |> configure_render_errors(app, endpoint)
+      |> add_proxy_endpoint_function(endpoint)
       |> add_router_use(router)
       |> add_beacon_pipeline(router)
       |> remove_conflicting_root_route(router, path)
-      |> mount_beacon_site(router, site, path)
+      |> mount_beacon_site(router, site, path, layouts_module)
       |> add_supervisor_child(site, repo)
       |> add_runtime_config(site, repo, endpoint, router)
       |> create_migration(repo, site)
@@ -90,6 +92,11 @@ if Code.ensure_loaded?(Igniter) do
         1. Run: mix ecto.migrate
         2. Install LiveAdmin: mix beacon_live_admin.install --path /admin/beacon
         3. Boot the app and visit #{path} (Beacon site) and /admin/beacon (LiveAdmin)
+
+      Layout strategy: Beacon-served pages use #{inspect(layouts_module)}.root as
+      their root layout, so your existing Phoenix chrome wraps both Phoenix-routed
+      and Beacon-served pages. The Beacon site's own DB-stored layout should be a
+      passthrough — `{{ inner_content }}`.
       """)
     end
 
@@ -174,12 +181,12 @@ if Code.ensure_loaded?(Igniter) do
       )
     end
 
-    defp mount_beacon_site(igniter, router, site, path) do
+    defp mount_beacon_site(igniter, router, site, path, layouts_module) do
       scope_source = """
 
       scope #{inspect(path)} do
         pipe_through [:browser, :beacon]
-        beacon_site #{inspect(path)}, site: #{inspect(site)}
+        beacon_site #{inspect(path)}, site: #{inspect(site)}, root_layout: {#{inspect(layouts_module)}, :root}
       end
       """
 
@@ -192,6 +199,38 @@ if Code.ensure_loaded?(Igniter) do
 
         zipper = Igniter.Code.Common.add_code(zipper, scope_source, placement: :after)
         {:ok, zipper}
+      end)
+    end
+
+    # Beacon expects the host endpoint to expose `proxy_endpoint/0` (a convention
+    # introduced when Beacon added multi-site/proxy support). For single-endpoint
+    # setups we are our own proxy.
+    defp add_proxy_endpoint_function(igniter, endpoint) do
+      Igniter.Project.Module.find_and_update_module!(igniter, endpoint, fn zipper ->
+        already_present? =
+          match?(
+            {:ok, _},
+            Igniter.Code.Function.move_to_def(zipper, :proxy_endpoint, 0)
+          )
+
+        if already_present? do
+          {:ok, zipper}
+        else
+          case Igniter.Code.Module.move_to_use(zipper, Phoenix.Endpoint) do
+            {:ok, found} ->
+              zipper =
+                Igniter.Code.Common.add_code(
+                  found,
+                  "def proxy_endpoint, do: __MODULE__",
+                  placement: :after
+                )
+
+              {:ok, zipper}
+
+            :error ->
+              {:ok, Igniter.Code.Common.add_code(zipper, "def proxy_endpoint, do: __MODULE__", placement: :after)}
+          end
+        end
       end)
     end
 
